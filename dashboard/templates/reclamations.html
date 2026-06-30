@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% set active = "reclamations" %}
+{% block title %}Réclamations — Idarati Admin{% endblock %}
+{% block page_title %}Toutes les réclamations{% endblock %}
+
+{% block content %}
+<div class="table-card">
+  <div class="table-header">
+    <h3>{{ rows | length }} réclamation{{ 's' if rows | length != 1 }}</h3>
+    <input class="search-bar" type="text" id="search" placeholder="🔍  Rechercher…" oninput="filterTable()">
+  </div>
+
+  {% if rows %}
+  <div style="overflow-x:auto">
+  <table id="mainTable">
+    <thead>
+      <tr>
+        <th>Session</th>
+        <th>Date</th>
+        <th>Utilisateur</th>
+        <th>Demande</th>
+        <th>Intent</th>
+        <th>Priorité</th>
+        <th>Langue</th>
+        <th>Qualité</th>
+        <th>Temps</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in rows %}
+    <tr data-search="{{ r.demande_brute }} {{ r.intent }} {{ r.priorite }} {{ r.user_id }} {{ r.session_id }}">
+      <td style="font-family:monospace;font-size:11px;color:var(--muted)" title="{{ r.session_id }}">
+        {{ r.session_id[:12] }}…
+      </td>
+      <td style="white-space:nowrap;color:var(--muted);font-size:11px">{{ r.created_at[:16] }}</td>
+      <td style="font-size:11px">{{ r.user_id }}</td>
+      <td style="max-width:220px">
+        <span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+              title="{{ r.demande_brute }}">
+          {{ r.demande_brute[:70] }}{% if r.demande_brute | length > 70 %}…{% endif %}
+        </span>
+      </td>
+      <td><span class="badge badge-{{ r.intent }}">{{ r.intent }}</span></td>
+      <td><span class="badge badge-{{ r.priorite }}">{{ r.priorite }}</span></td>
+      <td style="font-size:11px">{{ r.langue }}</td>
+      <td>
+        {% set q = r.quality_score %}
+        <span class="score-pill {% if q >= 0.85 %}score-high{% elif q >= 0.5 %}score-medium{% else %}score-low{% endif %}">
+          {{ (q * 100) | round | int }}%
+        </span>
+      </td>
+      <td style="font-size:11px;white-space:nowrap;color:var(--muted)">
+        {% if r.processing_time_ms > 0 %}{{ (r.processing_time_ms / 1000) | round(1) }}s{% else %}—{% endif %}
+      </td>
+      <td style="white-space:nowrap">
+        <a href="/reclamation/{{ r.session_id }}" class="btn btn-primary" style="margin-right:4px">Voir</a>
+        <a href="/reclamation/{{ r.session_id }}/pdf" class="btn btn-pdf">⬇ PDF</a>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div style="padding:48px;text-align:center;color:var(--muted)">
+    <div style="font-size:32px;margin-bottom:12px">📭</div>
+    Aucune réclamation enregistrée.<br>
+    <small style="margin-top:8px;display:block">
+      Exécutez le graphe via <code>python main.py</code> ou depuis LangGraph Studio
+      pour voir les données apparaître ici.
+    </small>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterTable() {
+  const q = document.getElementById("search").value.toLowerCase();
+  document.querySelectorAll("#mainTable tbody tr").forEach(row => {
+    row.style.display = row.dataset.search.toLowerCase().includes(q) ? "" : "none";
+  });
+}
+</script>
+{% endblock %}

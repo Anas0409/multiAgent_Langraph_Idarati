@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+{% set active = "rapports" %}
+{% block title %}Rapports — Idarati Admin{% endblock %}
+{% block page_title %}{{ T.rapports }}{% endblock %}
+
+{% block content %}
+
+{# ── Summary cards ─────────────────────────────────────────────── #}
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+
+  <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-900/30 mb-3">
+      <svg class="stroke-brand-500" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M3 5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5z"/>
+        <path d="M3 9h18M9 21V9"/>
+      </svg>
+    </div>
+    <p class="text-sm text-gray-500 dark:text-gray-400">Total réclamations</p>
+    <h3 class="mt-1 text-3xl font-bold text-gray-800 dark:text-white">{{ total }}</h3>
+  </div>
+
+  <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-success-50 dark:bg-success-500/10 mb-3">
+      <svg class="fill-success-600" width="18" height="18" viewBox="0 0 24 24">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2a10 10 0 110 20A10 10 0 0112 2zm3.707 7.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-2-2a1 1 0 111.414-1.414L11 12.586l3.293-3.293a1 1 0 011.414 0z"/>
+      </svg>
+    </div>
+    <p class="text-sm text-gray-500 dark:text-gray-400">Succès (qualité ≥ 85%)</p>
+    <h3 class="mt-1 text-3xl font-bold text-gray-800 dark:text-white">
+      {{ success_n }}
+      <span class="text-base font-normal text-success-600 dark:text-success-400 ml-1">
+        / {{ total }} ({{ ((success_n / total * 100) | round | int) if total else 0 }}%)
+      </span>
+    </h3>
+  </div>
+
+  <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+    <div class="flex h-10 w-10 items-center justify-center rounded-xl mb-3
+                {% if avg_quality >= 85 %}bg-success-50 dark:bg-success-500/10
+                {% elif avg_quality >= 50 %}bg-amber-50 dark:bg-amber-500/10
+                {% else %}bg-error-50 dark:bg-error-500/10{% endif %}">
+      <svg width="18" height="18" viewBox="0 0 24 24"
+           class="{% if avg_quality >= 85 %}fill-success-600{% elif avg_quality >= 50 %}fill-amber-500{% else %}fill-error-600{% endif %}">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2a10 10 0 110 20A10 10 0 0112 2zm0 5a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1zm0 8a1 1 0 100 2 1 1 0 000-2z"/>
+      </svg>
+    </div>
+    <p class="text-sm text-gray-500 dark:text-gray-400">Score qualité moyen</p>
+    <h3 class="mt-1 text-3xl font-bold
+               {% if avg_quality >= 85 %}text-success-600 dark:text-success-400
+               {% elif avg_quality >= 50 %}text-amber-500
+               {% else %}text-error-600 dark:text-error-400{% endif %}">
+      {{ avg_quality }}%
+    </h3>
+  </div>
+
+</div>
+
+{# ── Export buttons ─────────────────────────────────────────────── #}
+<div class="mb-6 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+  <h3 class="mb-1 text-base font-semibold text-gray-800 dark:text-white">Export des données</h3>
+  <p class="mb-5 text-sm text-gray-500 dark:text-gray-400">
+    Exportez toutes les réclamations vers un fichier externe pour analyse.
+  </p>
+  <div class="flex flex-wrap gap-3">
+
+    <a href="{{ url_for('rapports_export_csv') }}"
+       class="inline-flex items-center gap-2.5 rounded-xl bg-success-600 px-5 py-3
+              text-sm font-semibold text-white hover:bg-green-700 transition-colors
+              shadow-sm shadow-success-600/20">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="12" y1="18" x2="12" y2="12"/>
+        <polyline points="9 15 12 18 15 15"/>
+      </svg>
+      Exporter CSV
+      <span class="rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium">
+        {{ total }} lignes
+      </span>
+    </a>
+
+    <a href="{{ url_for('rapports_export_csv') }}?format=json"
+       onclick="alert('Format JSON : même contenu que CSV, renommez en .json après téléchargement.'); return false;"
+       class="inline-flex items-center gap-2.5 rounded-xl border border-gray-200 dark:border-gray-700
+              bg-gray-50 dark:bg-gray-800 px-5 py-3 text-sm font-medium
+              text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="8" y1="13" x2="16" y2="13"/>
+        <line x1="8" y1="17" x2="16" y2="17"/>
+        <polyline points="10 9 9 9 8 9"/>
+      </svg>
+      Export JSON
+      <span class="rounded-full bg-gray-200 dark:bg-gray-700 px-2.5 py-0.5 text-xs text-gray-500 dark:text-gray-400">
+        Bientôt
+      </span>
+    </a>
+
+    <a href="/api/docs" target="_blank"
+       class="inline-flex items-center gap-2.5 rounded-xl border border-brand-200 dark:border-brand-800
+              bg-brand-50 dark:bg-brand-900/20 px-5 py-3 text-sm font-medium
+              text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-900/40 transition-colors">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="2" y1="12" x2="22" y2="12"/>
+        <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
+      </svg>
+      API REST
+      <span class="rounded-full bg-brand-100 dark:bg-brand-900/40 px-2.5 py-0.5 text-xs">
+        /api/docs
+      </span>
+    </a>
+
+  </div>
+</div>
+
+{# ── Intent chart + table ──────────────────────────────────────── #}
+<div class="mb-6 grid grid-cols-1 xl:grid-cols-2 gap-4">
+
+  <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+    <h3 class="text-sm font-semibold text-gray-800 dark:text-white mb-3">Répartition par intent</h3>
+    {# ⚠️ Plotly exige <div>, pas <canvas> #}
+    <div id="intentChart" style="height:200px"></div>
+  </div>
+
+  <div class="table-card">
+    <div class="table-header"><h3>Volume par intent</h3></div>
+    {% if by_intent %}
+    <table>
+      <thead>
+        <tr><th>Intent</th><th>Nb</th><th>%</th></tr>
+      </thead>
+      <tbody>
+      {% for r in by_intent %}
+      <tr>
+        <td><span class="badge badge-{{ r.intent }}">{{ r.intent }}</span></td>
+        <td class="font-semibold">{{ r.cnt }}</td>
+        <td>
+          <div class="flex items-center gap-2">
+            <div class="w-24 h-1.5 rounded-full bg-gray-100 dark:bg-gray-800">
+              <div class="h-1.5 rounded-full bg-brand-400"
+                   style="width:{{ ((r.cnt / total * 100) | round | int) if total else 0 }}%"></div>
+            </div>
+            <span class="text-xs text-gray-400">
+              {{ ((r.cnt / total * 100) | round | int) if total else 0 }}%
+            </span>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="py-10 text-center text-sm text-gray-400">Aucune donnée</div>
+    {% endif %}
+  </div>
+
+</div>
+
+{# ── Recent list with per-record PDF ───────────────────────────── #}
+<div class="table-card">
+  <div class="table-header">
+    <h3>Réclamations récentes — export individuel</h3>
+    <span class="text-xs text-gray-400 dark:text-gray-500">
+      {{ recent | length }} enregistrement{{ 's' if recent | length != 1 }}
+    </span>
+  </div>
+
+  {% if recent %}
+  <div style="overflow-x:auto">
+  <table>
+    <thead>
+      <tr>
+        <th>Session</th>
+        <th>Date</th>
+        <th>Utilisateur</th>
+        <th>Intent</th>
+        <th>Priorité</th>
+        <th>Qualité</th>
+        <th>Export</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in recent %}
+    <tr>
+      <td class="font-mono text-xs text-gray-400 dark:text-gray-500" title="{{ r.session_id }}">
+        {{ r.session_id[:14] }}…
+      </td>
+      <td class="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+        {{ r.created_at[:16] }}
+      </td>
+      <td class="text-xs text-gray-600 dark:text-gray-400">
+        {{ r.user_id or '—' }}
+      </td>
+      <td><span class="badge badge-{{ r.intent }}">{{ r.intent }}</span></td>
+      <td><span class="badge badge-{{ r.priorite }}">{{ r.priorite }}</span></td>
+      <td>
+        {% set q = r.quality_score or 0 %}
+        <span class="score-pill {% if q >= 0.85 %}score-high{% elif q >= 0.5 %}score-medium{% else %}score-low{% endif %}">
+          {{ (q * 100) | round | int }}%
+        </span>
+      </td>
+      <td class="whitespace-nowrap">
+        <div class="flex items-center gap-2">
+          <a href="{{ url_for('detail', session_id=r.session_id) }}"
+             class="inline-flex items-center gap-1 rounded-lg border border-brand-200 dark:border-brand-800
+                    bg-brand-50 dark:bg-brand-900/20 px-2.5 py-1.5 text-xs font-medium
+                    text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-900/40">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+            Voir
+          </a>
+          <a href="{{ url_for('export_pdf', session_id=r.session_id) }}" class="btn-pdf">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            PDF
+          </a>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="py-16 text-center">
+    <svg class="mx-auto mb-3 fill-gray-200 dark:fill-gray-700" width="40" height="40" viewBox="0 0 24 24">
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+    </svg>
+    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Aucune réclamation enregistrée</p>
+    <p class="mt-1 text-xs text-gray-400">
+      Lancez <code class="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">python main.py</code>
+    </p>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const intentData = {{ by_intent | tojson }};
+const COLORS = { reclamation:'#ef4444', procedure:'#3b82f6', info:'#10b981', renvoi:'#f59e0b', inconnu:'#9ca3af' };
+
+if (intentData.length) {
+  const dark = document.documentElement.classList.contains('dark');
+  Plotly.newPlot('intentChart', [{
+    type: 'pie',
+    hole: 0.58,
+    labels: intentData.map(d => d.intent),
+    values: intentData.map(d => d.cnt),
+    marker: {
+      colors: intentData.map(d => COLORS[d.intent] || '#9ca3af'),
+      line: { color: '#fff', width: 2 }
+    },
+    textinfo: 'percent',
+    hovertemplate: '<b>%{label}</b><br>%{value} réclamations (%{percent})<extra></extra>',
+  }], {
+    paper_bgcolor: dark ? '#111827' : '#fff',
+    plot_bgcolor:  dark ? '#111827' : '#fff',
+    showlegend: true,
+    legend: {
+      orientation: 'v', x: 1.02, y: 0.5,
+      font: { size: 10, family: 'Outfit,Inter,sans-serif', color: dark ? '#9ca3af' : '#6b7280' }
+    },
+    margin: { t: 0, b: 0, l: 0, r: 110 },
+  }, { responsive: true, displayModeBar: false });
+} else {
+  document.getElementById('intentChart').innerHTML =
+    '<div style="height:200px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:12px">Aucune donnée</div>';
+}
+
+// Re-theme on dark mode toggle
+new MutationObserver(() => {
+  const el = document.getElementById('intentChart');
+  if (el && el._fullLayout) {
+    const d = document.documentElement.classList.contains('dark');
+    Plotly.relayout('intentChart', {
+      paper_bgcolor: d ? '#111827' : '#fff',
+      plot_bgcolor:  d ? '#111827' : '#fff',
+      'legend.font.color': d ? '#9ca3af' : '#6b7280',
+    });
+  }
+}).observe(document.documentElement, { attributeFilter: ['class'] });
+</script>
+{% endblock %}

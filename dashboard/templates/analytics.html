@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% set active = "analytics" %}
+{% block title %}Statistiques — Idarati Admin{% endblock %}
+{% block page_title %}{{ T.analytics }}{% endblock %}
+
+{% block content %}
+
+{# ── Period filter ─────────────────────────────────────────────── #}
+<div class="mb-5 flex items-center gap-2">
+  {% for p, label in [('7d','7 jours'),('30d','30 jours'),('90d','90 jours')] %}
+  <a href="?period={{ p }}"
+     class="rounded-lg px-4 py-2 text-sm font-medium transition-colors
+            {% if period == p %}bg-brand-500 text-white shadow-sm shadow-brand-500/20
+            {% else %}bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700
+                       text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800{% endif %}">
+    {{ label }}
+  </a>
+  {% endfor %}
+</div>
+
+{# ── KPI row ──────────────────────────────────────────────────── #}
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
+
+  <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+    <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-900/30">
+      <svg class="stroke-brand-500" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M3 3v18h18M7 16l4-4 4 4 4-6"/>
+      </svg>
+    </div>
+    <div class="mt-4">
+      <span class="text-sm text-gray-500 dark:text-gray-400">Total analysé</span>
+      <h4 class="mt-1 text-3xl font-bold text-gray-800 dark:text-white">{{ total }}</h4>
+      <p class="mt-1 text-xs text-gray-400">réclamations dans la base</p>
+    </div>
+  </div>
+
+  <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+    <div class="flex h-11 w-11 items-center justify-center rounded-xl
+                {% if avg_quality >= 85 %}bg-success-50 dark:bg-success-500/10{% elif avg_quality >= 50 %}bg-amber-50 dark:bg-amber-500/10{% else %}bg-error-50 dark:bg-error-500/10{% endif %}">
+      <svg width="22" height="22" viewBox="0 0 24 24"
+           class="{% if avg_quality >= 85 %}fill-success-600{% elif avg_quality >= 50 %}fill-amber-500{% else %}fill-error-600{% endif %}">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2a10 10 0 110 20A10 10 0 0112 2zm3.707 7.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-2-2a1 1 0 111.414-1.414L11 12.586l3.293-3.293a1 1 0 011.414 0z"/>
+      </svg>
+    </div>
+    <div class="mt-4">
+      <span class="text-sm text-gray-500 dark:text-gray-400">Score qualité moyen</span>
+      <h4 class="mt-1 text-3xl font-bold text-gray-800 dark:text-white">{{ avg_quality }}%</h4>
+      <p class="mt-1 text-xs text-gray-400">seuil succès : 85%</p>
+    </div>
+  </div>
+
+  <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+    <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-50 dark:bg-purple-500/10">
+      <svg class="fill-purple-500" width="22" height="22" viewBox="0 0 24 24">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2a10 10 0 110 20A10 10 0 0112 2zm0 2a8 8 0 100 16A8 8 0 0012 4zm0 2a1 1 0 011 1v4.586l2.707 2.707a1 1 0 01-1.414 1.414l-3-3A1 1 0 0111 14V9a1 1 0 011-1z"/>
+      </svg>
+    </div>
+    <div class="mt-4">
+      <span class="text-sm text-gray-500 dark:text-gray-400">Temps moyen pipeline</span>
+      <h4 class="mt-1 text-3xl font-bold text-gray-800 dark:text-white">{{ avg_time_ms | int }}<span class="text-lg font-normal text-gray-400 ml-1">ms</span></h4>
+      <p class="mt-1 text-xs text-gray-400">de NLU à dispatch</p>
+    </div>
+  </div>
+
+  <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+    <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-success-50 dark:bg-success-500/10">
+      <svg class="fill-success-600" width="22" height="22" viewBox="0 0 24 24">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2a10 10 0 110 20A10 10 0 0112 2zm3.707 7.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-2-2a1 1 0 111.414-1.414L11 12.586l3.293-3.293a1 1 0 011.414 0z"/>
+      </svg>
+    </div>
+    <div class="mt-4">
+      <span class="text-sm text-gray-500 dark:text-gray-400">Succès (qualité ≥ 85%)</span>
+      <h4 class="mt-1 text-3xl font-bold text-gray-800 dark:text-white">{{ success_n }}</h4>
+      <p class="mt-1 text-xs text-gray-400">sur {{ total }} traitées</p>
+    </div>
+  </div>
+
+</div>
+
+{# ── Trend + Quality bins ─────────────────────────────────────── #}
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
+
+  <div class="xl:col-span-2 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+    <h3 class="text-sm font-semibold text-gray-800 dark:text-white mb-3">Tendance sur la période</h3>
+    <div id="trendChart" style="height:230px"></div>
+  </div>
+
+  <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+    <h3 class="text-sm font-semibold text-gray-800 dark:text-white mb-3">Distribution qualité</h3>
+    <div id="qualityBinsChart" style="height:230px"></div>
+  </div>
+
+</div>
+
+{# ── Intent quality + Langue + Canal ─────────────────────────── #}
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
+
+  <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+    <h3 class="text-sm font-semibold text-gray-800 dark:text-white mb-3">Qualité moyenne par intent</h3>
+    <div id="intentQualityChart" style="height:200px"></div>
+  </div>
+
+  <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+    <h3 class="text-sm font-semibold text-gray-800 dark:text-white mb-3">Répartition par langue</h3>
+    <div id="langueChart" style="height:200px"></div>
+  </div>
+
+  <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+    <h3 class="text-sm font-semibold text-gray-800 dark:text-white mb-3">Canal de dépôt</h3>
+    <div id="canalChart" style="height:200px"></div>
+  </div>
+
+</div>
+
+{# ── Detail table ─────────────────────────────────────────────── #}
+<div class="table-card">
+  <div class="table-header">
+    <h3>Détail par intent</h3>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Intent</th><th>Volume</th><th>Qualité moy.</th><th>Temps moy. (s)</th><th>Répartition</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in by_intent_detail %}
+    <tr>
+      <td><span class="badge badge-{{ r.intent }}">{{ r.intent }}</span></td>
+      <td class="font-semibold">{{ r.cnt }}</td>
+      <td>
+        <span class="score-pill {% if (r.avg_q or 0) >= 85 %}score-high{% elif (r.avg_q or 0) >= 50 %}score-medium{% else %}score-low{% endif %}">
+          {{ r.avg_q or 0 }}%
+        </span>
+      </td>
+      <td class="text-gray-500 dark:text-gray-400">{{ r.avg_t_sec or '—' }}s</td>
+      <td style="width:160px">
+        <div class="flex items-center gap-2">
+          <div class="flex-1 h-1.5 rounded-full bg-gray-100 dark:bg-gray-800">
+            <div class="h-1.5 rounded-full bg-brand-400"
+                 style="width:{{ ((r.cnt / total) * 100) | round | int if total else 0 }}%"></div>
+          </div>
+          <span class="text-xs text-gray-400">{{ ((r.cnt / total) * 100) | round | int if total else 0 }}%</span>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const COLORS = ['#465fff','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+const pcfg = { responsive: true, displayModeBar: false };
+
+function isDark() { return document.documentElement.classList.contains('dark'); }
+
+// Builds a complete layout merging base + overrides properly
+function lay(overrides = {}) {
+  const d = isDark();
+  const gc = d ? '#1f2937' : '#f3f4f6';
+  const tc = d ? '#9ca3af' : '#6b7280';
+  const base = {
+    paper_bgcolor: d ? '#111827' : '#fff',
+    plot_bgcolor:  d ? '#111827' : '#fff',
+    font: { family: 'Outfit,Inter,sans-serif', color: tc, size: 10 },
+    margin: { t: 10, b: 36, l: 48, r: 10 },
+    xaxis: { gridcolor: gc, zerolinecolor: gc, color: tc },
+    yaxis: { gridcolor: gc, zerolinecolor: gc, color: tc },
+  };
+  // Deep-merge xaxis/yaxis so gridcolor is preserved
+  if (overrides.xaxis) { overrides.xaxis = { ...base.xaxis, ...overrides.xaxis }; }
+  if (overrides.yaxis) { overrides.yaxis = { ...base.yaxis, ...overrides.yaxis }; }
+  return { ...base, ...overrides };
+}
+
+// ── Trend ─────────────────────────────────────────────────────
+const trend = {{ daily_30 | tojson }};
+if (trend.length) {
+  Plotly.newPlot('trendChart', [
+    { type:'scatter', mode:'lines+markers', name:'Réclamations',
+      x:trend.map(d=>d.day), y:trend.map(d=>d.cnt),
+      line:{color:'#465fff',width:2}, fill:'tozeroy', fillcolor:'rgba(70,95,255,0.07)', yaxis:'y' },
+    { type:'scatter', mode:'lines', name:'Qualité (%)',
+      x:trend.map(d=>d.day), y:trend.map(d=>d.avg_q),
+      line:{color:'#10b981',width:2,dash:'dot'}, yaxis:'y2' }
+  ], lay({
+    yaxis:  { title:{text:'Volume',font:{size:10}}, rangemode:'tozero' },
+    yaxis2: { title:{text:'Qualité (%)',font:{size:10}}, overlaying:'y', side:'right',
+              range:[0,100], showgrid:false },
+    legend: { orientation:'h', y:-0.2, font:{size:10} },
+    hovermode: 'x unified',
+    margin: { t:10, b:50, l:48, r:50 },
+  }), pcfg);
+} else {
+  document.getElementById('trendChart').innerHTML =
+    '<div style="height:230px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:12px">Aucune donnée pour cette période</div>';
+}
+
+// ── Quality bins donut ─────────────────────────────────────────
+const bins = {{ quality_bins | tojson }};
+if (bins.length) {
+  Plotly.newPlot('qualityBinsChart', [{
+    type:'pie', hole:0.58,
+    labels:bins.map(d=>d.label), values:bins.map(d=>d.cnt),
+    marker:{ colors:['#10b981','#3b82f6','#f59e0b','#ef4444'], line:{color:'#fff',width:2} },
+    textinfo:'percent', hovertemplate:'<b>%{label}</b><br>%{value}<extra></extra>',
+  }], { ...lay({ margin:{t:0,b:30,l:0,r:0} }), showlegend:true,
+         legend:{ orientation:'h', y:-0.15, font:{size:9} } }, pcfg);
+} else {
+  document.getElementById('qualityBinsChart').innerHTML =
+    '<div style="height:230px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:12px">Pas de données</div>';
+}
+
+// ── Intent quality bar ────────────────────────────────────────
+const intentD = {{ by_intent_detail | tojson }};
+if (intentD.length) {
+  Plotly.newPlot('intentQualityChart', [{
+    type:'bar', orientation:'h',
+    x:intentD.map(d=>d.avg_q||0), y:intentD.map(d=>d.intent),
+    marker:{ color:COLORS, opacity:0.85 },
+    hovertemplate:'<b>%{y}</b>: %{x}%<extra></extra>',
+  }], lay({ margin:{t:10,b:36,l:80,r:10}, xaxis:{ range:[0,100] }, showlegend:false }), pcfg);
+}
+
+// ── Langue donut ───────────────────────────────────────────────
+const langue = {{ by_langue | tojson }};
+if (langue.length) {
+  Plotly.newPlot('langueChart', [{
+    type:'pie', hole:0.55,
+    labels:langue.map(d=>d.langue||'N/A'), values:langue.map(d=>d.cnt),
+    marker:{ colors:COLORS, line:{color:'#fff',width:2} },
+    textinfo:'label+percent',
+  }], { ...lay({ margin:{t:0,b:0,l:0,r:0} }), showlegend:false }, pcfg);
+}
+
+// ── Canal bar ─────────────────────────────────────────────────
+const canal = {{ by_canal | tojson }};
+if (canal.length) {
+  Plotly.newPlot('canalChart', [{
+    type:'bar',
+    x:canal.map(d=>d.canal_cible||'N/A'), y:canal.map(d=>d.cnt),
+    marker:{ color:COLORS, opacity:0.85 },
+    hovertemplate:'<b>%{x}</b>: %{y}<extra></extra>',
+  }], lay({ margin:{t:10,b:50,l:10,r:10}, showlegend:false, xaxis:{ gridcolor:'transparent' } }), pcfg);
+}
+
+// Re-theme all charts on dark mode toggle
+new MutationObserver(() => {
+  ['trendChart','qualityBinsChart','intentQualityChart','langueChart','canalChart'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el._fullLayout) {
+      Plotly.relayout(id, {
+        paper_bgcolor: isDark() ? '#111827' : '#fff',
+        plot_bgcolor:  isDark() ? '#111827' : '#fff',
+        font: { color: isDark() ? '#9ca3af' : '#6b7280' },
+      });
+    }
+  });
+}).observe(document.documentElement, { attributeFilter: ['class'] });
+</script>
+{% endblock %}

@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% set active = "users" %}
+{% block title %}Utilisateurs — Idarati Admin{% endblock %}
+{% block page_title %}Gestion des utilisateurs{% endblock %}
+
+{% block content %}
+<div x-data="{
+  showAdd: false,
+  editId: null,
+  editLang: 'fr',
+  editNiveau: 'moyen',
+  openEdit(id, lang, niv) { this.editId = id; this.editLang = lang; this.editNiveau = niv; }
+}">
+
+{# ── Header bar ──────────────────────────────────────────────── #}
+<div class="mb-5 flex items-center justify-between">
+  <div>
+    <p class="text-sm text-gray-500">{{ profiles | length }} profil{{ 's' if profiles | length != 1 }} enregistré{{ 's' if profiles | length != 1 }}</p>
+  </div>
+  <button @click="showAdd = !showAdd"
+          class="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition-colors">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+    Ajouter un utilisateur
+  </button>
+</div>
+
+{# ── Add form (collapsible) ──────────────────────────────────── #}
+<div x-show="showAdd" x-transition class="mb-5 rounded-2xl border border-brand-200 bg-brand-50 p-5">
+  <h3 class="mb-4 text-sm font-semibold text-brand-700">Nouvel utilisateur</h3>
+  <form action="{{ url_for('users_add') }}" method="POST" class="flex flex-wrap gap-3 items-end">
+    <div>
+      <label class="block text-xs font-medium text-gray-600 mb-1">ID Utilisateur *</label>
+      <input name="user_id" required placeholder="ex: user_003"
+             class="search-bar" style="width:200px">
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-600 mb-1">Langue</label>
+      <select name="langue_pref" class="search-bar" style="width:120px">
+        <option value="fr">Français</option>
+        <option value="ar">Arabe</option>
+        <option value="en">Anglais</option>
+        <option value="darija">Darija</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-600 mb-1">Niveau numérique</label>
+      <select name="niveau_numerique" class="search-bar" style="width:140px">
+        <option value="faible">Faible</option>
+        <option value="moyen" selected>Moyen</option>
+        <option value="avance">Avancé</option>
+      </select>
+    </div>
+    <div class="flex gap-2">
+      <button type="submit"
+              class="rounded-xl bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">
+        Créer
+      </button>
+      <button type="button" @click="showAdd = false"
+              class="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
+        Annuler
+      </button>
+    </div>
+  </form>
+</div>
+
+{# ── Users table ─────────────────────────────────────────────── #}
+<div class="table-card">
+  <div class="table-header">
+    <h3>Profils utilisateurs</h3>
+    <input class="search-bar" type="text" id="userSearch" placeholder="Rechercher…" oninput="filterUsers()">
+  </div>
+
+  {% if profiles %}
+  <table id="userTable">
+    <thead>
+      <tr>
+        <th>ID Utilisateur</th>
+        <th>Langue</th>
+        <th>Niveau numérique</th>
+        <th>Créé le</th>
+        <th>Mis à jour</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for p in profiles %}
+    <tr data-search="{{ p.user_id }} {{ p.langue_pref }} {{ p.niveau_numerique }}">
+      <td class="font-mono text-sm font-semibold text-gray-800">{{ p.user_id }}</td>
+      <td>
+        <span class="badge badge-{{ 'procedure' if p.langue_pref == 'fr' else 'info' if p.langue_pref == 'ar' else 'renvoi' }}">
+          {{ p.langue_pref | upper }}
+        </span>
+      </td>
+      <td>
+        <span class="score-pill {% if p.niveau_numerique == 'avance' %}score-high{% elif p.niveau_numerique == 'moyen' %}score-medium{% else %}score-low{% endif %}">
+          {{ p.niveau_numerique }}
+        </span>
+      </td>
+      <td class="text-xs text-gray-400">{{ (p.created_at or '')[:16] }}</td>
+      <td class="text-xs text-gray-400">{{ (p.updated_at or '')[:16] }}</td>
+      <td class="whitespace-nowrap">
+        <button @click="openEdit('{{ p.user_id }}', '{{ p.langue_pref }}', '{{ p.niveau_numerique }}')"
+                class="mr-2 inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Éditer
+        </button>
+        <form action="{{ url_for('users_delete', user_id=p.user_id) }}" method="POST" class="inline"
+              onsubmit="return confirm('Supprimer {{ p.user_id }} ?')">
+          <button type="submit"
+                  class="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+            Supprimer
+          </button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="py-16 text-center">
+    <svg class="mx-auto mb-3 fill-gray-200" width="40" height="40" viewBox="0 0 24 24">
+      <path d="M9 4a4 4 0 100 8 4 4 0 000-8zM5 8a4 4 0 118 0 4 4 0 01-8 0zm-2 9a6 6 0 0112 0v1H3v-1z"/>
+    </svg>
+    <p class="text-sm font-medium text-gray-500">Aucun utilisateur enregistré</p>
+    <p class="mt-1 text-xs text-gray-400">Les profils sont créés automatiquement lors du traitement des réclamations.</p>
+    <button @click="showAdd = true"
+            class="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">
+      Ajouter manuellement
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+{# ── Edit modal ──────────────────────────────────────────────── #}
+<div x-show="editId !== null" x-transition
+     class="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50">
+  <div @click.outside="editId = null"
+       class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+    <h3 class="mb-5 text-base font-semibold text-gray-800">
+      Modifier le profil — <span class="text-brand-500 font-mono text-sm" x-text="editId"></span>
+    </h3>
+    <template x-if="editId !== null">
+      <form :action="`/users/${editId}/edit`" method="POST" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1.5">Langue préférée</label>
+          <select name="langue_pref" x-model="editLang" class="w-full search-bar">
+            <option value="fr">Français</option>
+            <option value="ar">Arabe</option>
+            <option value="en">Anglais</option>
+            <option value="darija">Darija</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1.5">Niveau numérique</label>
+          <select name="niveau_numerique" x-model="editNiveau" class="w-full search-bar">
+            <option value="faible">Faible</option>
+            <option value="moyen">Moyen</option>
+            <option value="avance">Avancé</option>
+          </select>
+        </div>
+        <div class="flex justify-end gap-3 pt-2">
+          <button type="button" @click="editId = null"
+                  class="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
+            Annuler
+          </button>
+          <button type="submit"
+                  class="rounded-xl bg-brand-500 px-5 py-2 text-sm font-medium text-white hover:bg-brand-600">
+            Enregistrer
+          </button>
+        </div>
+      </form>
+    </template>
+  </div>
+</div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterUsers() {
+  const q = document.getElementById('userSearch').value.toLowerCase();
+  document.querySelectorAll('#userTable tbody tr').forEach(r => {
+    r.style.display = r.dataset.search.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

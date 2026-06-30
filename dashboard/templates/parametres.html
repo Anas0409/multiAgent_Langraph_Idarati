@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% set active = "parametres" %}
+{% block title %}Paramètres — Idarati Admin{% endblock %}
+{% block page_title %}Paramètres système{% endblock %}
+
+{% block content %}
+
+{% macro cfg_row(label, value, badge_class='') %}
+<div class="flex items-start justify-between py-3 border-b border-gray-50 last:border-0">
+  <span class="text-sm text-gray-500 w-48 shrink-0">{{ label }}</span>
+  {% if badge_class %}
+    <span class="badge {{ badge_class }}">{{ value }}</span>
+  {% else %}
+    <span class="text-sm font-semibold text-gray-800 font-mono text-right break-all">{{ value }}</span>
+  {% endif %}
+</div>
+{% endmacro %}
+
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4">
+
+  {# ── LLM ─────────────────────────────────────────────────────── #}
+  <div class="rounded-2xl border border-gray-200 bg-white p-6">
+    <div class="flex items-center gap-3 mb-5">
+      <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50">
+        <svg class="fill-brand-500" width="20" height="20" viewBox="0 0 24 24">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2a2 2 0 011.732 1L21 16a2 2 0 01-1.732 3H4.732A2 2 0 013 16L10.268 3A2 2 0 0112 2zm0 5a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1zm0 8a1 1 0 100 2 1 1 0 000-2z"/>
+        </svg>
+      </div>
+      <div>
+        <h3 class="text-sm font-semibold text-gray-800">Modèle LLM</h3>
+        <p class="text-xs text-gray-400">Configuration Hugging Face Router</p>
+      </div>
+    </div>
+    {{ cfg_row("Modèle principal", cfg.llm_model) }}
+    {{ cfg_row("Modèle rapide", cfg.llm_model_fast) }}
+    {{ cfg_row("Modèle Qwen", cfg.llm_model_qwen) }}
+    {{ cfg_row("HF Token", ("✓ Configuré" if cfg.huggingfacehub_api_token else "✗ Manquant"), "badge-" + ("info" if cfg.huggingfacehub_api_token else "urgente")) }}
+    {{ cfg_row("LangSmith Project", cfg.langchain_project) }}
+    {{ cfg_row("Tracing LangSmith", ("Activé" if cfg.langchain_tracing_v2 else "Désactivé"), "badge-" + ("info" if cfg.langchain_tracing_v2 else "inconnu")) }}
+  </div>
+
+  {# ── Seuils qualité ───────────────────────────────────────────── #}
+  <div class="rounded-2xl border border-gray-200 bg-white p-6">
+    <div class="flex items-center gap-3 mb-5">
+      <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-success-50">
+        <svg class="fill-success-600" width="20" height="20" viewBox="0 0 24 24">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2a10 10 0 110 20A10 10 0 0112 2zm3.707 7.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-2-2a1 1 0 111.414-1.414L11 12.586l3.293-3.293a1 1 0 011.414 0z"/>
+        </svg>
+      </div>
+      <div>
+        <h3 class="text-sm font-semibold text-gray-800">Seuils de qualité</h3>
+        <p class="text-xs text-gray-400">Contrôle du quality gate et HITL</p>
+      </div>
+    </div>
+    {{ cfg_row("Quality Gate", (cfg.score_qualitygate * 100) | round | int | string + "%" ) }}
+    {{ cfg_row("Max itérations QG", cfg.max_quality_iterations) }}
+    {{ cfg_row("Score complétude min", (cfg.score_completude_min * 100) | round | int | string + "%") }}
+    {{ cfg_row("HITL seuil bas", (cfg.score_completude_hitl_low * 100) | round | int | string + "%") }}
+    {{ cfg_row("HITL seuil haut", (cfg.score_completude_hitl_high * 100) | round | int | string + "%") }}
+    {{ cfg_row("Timeout HITL", cfg.hitl_timeout | string + "s") }}
+  </div>
+
+</div>
+
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4">
+
+  {# ── Circuit Breaker ──────────────────────────────────────────── #}
+  <div class="rounded-2xl border border-gray-200 bg-white p-6">
+    <div class="flex items-center gap-3 mb-5">
+      <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-error-50">
+        <svg class="fill-error-600" width="20" height="20" viewBox="0 0 24 24">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M13 3a1 1 0 00-2 0v7H4a1 1 0 000 2h7v7a1 1 0 102 0v-7h7a1 1 0 100-2h-7V3z" transform="rotate(45 12 12)"/>
+        </svg>
+      </div>
+      <div>
+        <h3 class="text-sm font-semibold text-gray-800">Circuit Breaker</h3>
+        <p class="text-xs text-gray-400">Dégradation gracieuse sur erreurs</p>
+      </div>
+    </div>
+    {{ cfg_row("Seuil d'erreurs", cfg.circuit_breaker_threshold) }}
+    {{ cfg_row("Timeout CB", cfg.circuit_breaker_timeout | string + "s") }}
+    {{ cfg_row("Récursion max", cfg.recursion_limit) }}
+    {{ cfg_row("Cache TTL (Redis)", cfg.redis_cache_ttl | string + "s") }}
+    {{ cfg_row("Agent HITL Email", cfg.hitl_agent_email) }}
+  </div>
+
+  {# ── Base de données ──────────────────────────────────────────── #}
+  <div class="rounded-2xl border border-gray-200 bg-white p-6">
+    <div class="flex items-center gap-3 mb-5">
+      <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50">
+        <svg class="fill-purple-500" width="20" height="20" viewBox="0 0 24 24">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M4 5a3 3 0 013-3h10a3 3 0 013 3v14a3 3 0 01-3 3H7a3 3 0 01-3-3V5zm3-1a1 1 0 00-1 1v14a1 1 0 001 1h10a1 1 0 001-1V5a1 1 0 00-1-1H7z"/>
+          <path d="M9 9h6M9 12h6M9 15h4" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <h3 class="text-sm font-semibold text-gray-800">Base de données SQLite</h3>
+        <p class="text-xs text-gray-400">État actuel des tables</p>
+      </div>
+    </div>
+    {{ cfg_row("Chemin DB", cfg.db_path.split('/')[-1] if '/' in cfg.db_path else cfg.db_path.split('\\')[-1]) }}
+    {% for table, count in db_stats.items() %}
+    <div class="flex items-start justify-between py-3 border-b border-gray-50 last:border-0">
+      <span class="text-sm text-gray-500 font-mono">{{ table }}</span>
+      <span class="text-sm font-bold {% if count > 0 %}text-success-600{% else %}text-gray-400{% endif %}">
+        {{ count }} ligne{{ 's' if count != 1 }}
+      </span>
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+
+{# ── Canaux de diffusion ───────────────────────────────────────── #}
+<div class="rounded-2xl border border-gray-200 bg-white p-6">
+  <div class="flex items-center gap-3 mb-5">
+    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50">
+      <svg class="fill-amber-500" width="20" height="20" viewBox="0 0 24 24">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M3 5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm2 0v2.586l7 7 7-7V5H5zm0 4.828V19h14V9.828l-6.293 6.293a1 1 0 01-1.414 0L5 9.828z"/>
+      </svg>
+    </div>
+    <div>
+      <h3 class="text-sm font-semibold text-gray-800">Canaux de diffusion</h3>
+      <p class="text-xs text-gray-400">Email, SMS, WhatsApp</p>
+    </div>
+  </div>
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    {% set channels = [
+      ('Email (SMTP)', cfg.smtp_host + ':' + cfg.smtp_port | string, cfg.smtp_user),
+      ('WhatsApp', cfg.whatsapp_phone_id or 'Non configuré', cfg.whatsapp_token),
+      ('SMS (Twilio)', cfg.twilio_from or 'Non configuré', cfg.twilio_sid),
+    ] %}
+    {% for name, endpoint, token in channels %}
+    <div class="rounded-xl border border-gray-100 bg-gray-50 p-4">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-medium text-gray-700">{{ name }}</span>
+        <span class="badge {% if token %}badge-info{% else %}badge-inconnu{% endif %}">
+          {{ 'Actif' if token else 'Inactif' }}
+        </span>
+      </div>
+      <p class="text-xs text-gray-400 font-mono">{{ endpoint }}</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}

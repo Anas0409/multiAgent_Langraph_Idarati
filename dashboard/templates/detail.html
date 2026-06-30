@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% set active = "reclamations" %}
+{% block title %}Réclamation {{ r.session_id[:8] }} — Idarati Admin{% endblock %}
+{% block page_title %}Détail réclamation{% endblock %}
+
+{% block content %}
+
+{# ── Top bar with actions ────────────────────────────────────── #}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+  <a href="/reclamations" class="btn btn-back">← Retour à la liste</a>
+  <div style="display:flex;gap:8px">
+    <span style="font-family:monospace;font-size:11px;color:var(--muted);padding:6px 10px;
+                 background:var(--bg);border-radius:6px">
+      {{ r.session_id }}
+    </span>
+    <a href="/reclamation/{{ r.session_id }}/pdf" class="btn btn-pdf">⬇ Exporter PDF</a>
+  </div>
+</div>
+
+{# ── Top metadata + Response grid ───────────────────────────── #}
+<div class="detail-grid">
+
+  {# Left — Metadata #}
+  <div>
+    <div class="detail-card" style="margin-bottom:16px">
+      <h3>Informations</h3>
+      <div class="kv"><span class="kv-label">Session</span>
+        <span class="kv-value" style="font-family:monospace;font-size:11px">{{ r.session_id[:20] }}…</span></div>
+      <div class="kv"><span class="kv-label">Utilisateur</span>
+        <span class="kv-value">{{ r.user_id }}</span></div>
+      <div class="kv"><span class="kv-label">Date</span>
+        <span class="kv-value">{{ r.created_at[:16] }}</span></div>
+      <div class="kv"><span class="kv-label">Canal</span>
+        <span class="kv-value">{{ r.canal_cible }}</span></div>
+      <div class="kv"><span class="kv-label">Langue</span>
+        <span class="kv-value">{{ r.langue }}</span></div>
+      <div class="kv"><span class="kv-label">Temps</span>
+        <span class="kv-value">
+          {% if r.processing_time_ms > 0 %}{{ (r.processing_time_ms / 1000) | round(2) }}s{% else %}N/A{% endif %}
+        </span></div>
+    </div>
+
+    <div class="detail-card" style="margin-bottom:16px">
+      <h3>Classification</h3>
+      <div class="kv"><span class="kv-label">Intent</span>
+        <span class="kv-value"><span class="badge badge-{{ r.intent }}">{{ r.intent }}</span></span></div>
+      <div class="kv"><span class="kv-label">Priorité</span>
+        <span class="kv-value"><span class="badge badge-{{ r.priorite }}">{{ r.priorite }}</span></span></div>
+      <div class="kv"><span class="kv-label">Qualité</span>
+        <span class="kv-value">
+          {% set q = r.quality_score %}
+          <span class="score-pill {% if q >= 0.85 %}score-high{% elif q >= 0.5 %}score-medium{% else %}score-low{% endif %}">
+            {{ (q * 100) | round | int }}%
+            {% if q >= 0.85 %} ✓{% elif q >= 0.5 %} ⚠{% else %} ✗{% endif %}
+          </span>
+        </span></div>
+    </div>
+
+    {% if r.routing_plan %}
+    <div class="detail-card">
+      <h3>Plan de Traitement</h3>
+      <div class="agent-tags">
+        {% for agent in r.routing_plan %}
+          <span class="agent-tag">{{ agent }}</span>
+          {% if not loop.last %}<span class="agent-arrow">→</span>{% endif %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {# Right — Request + Response #}
+  <div>
+    <div class="detail-card" style="margin-bottom:16px">
+      <h3>Demande Originale</h3>
+      <div class="response-box" style="background:#fafafa;max-height:120px;font-style:italic">{{ r.demande_brute }}</div>
+    </div>
+
+    <div class="detail-card">
+      <h3>Réponse Finale</h3>
+      <div class="response-box">{{ r.reponse_finale or '— Aucune réponse générée —' }}</div>
+    </div>
+  </div>
+
+</div>
+
+{# ── Sources RAG ────────────────────────────────────────────── #}
+{% if r.documents %}
+<div class="detail-card" style="margin-bottom:16px">
+  <h3>Sources Consultées (RAG)</h3>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+    {% for doc in r.documents[:6] %}
+    <div style="background:var(--bg);border-radius:8px;padding:10px 14px;font-size:11px;
+                color:var(--text);border-left:3px solid var(--primary)">
+      <strong>[{{ loop.index }}]</strong> {{ doc[:280] }}{% if doc | length > 280 %}…{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{# ── Execution trace ────────────────────────────────────────── #}
+{% if r.audit_log %}
+<div class="detail-card">
+  <h3>Trace d'Exécution ({{ r.audit_log | length }} nœuds)</h3>
+  <div class="timeline" style="margin-top:8px">
+    {% set ns = namespace(prev_ts=0) %}
+    {% for entry in r.audit_log %}
+      {% set delta = (entry.ts - ns.prev_ts) if ns.prev_ts else 0 %}
+      {% set ns.prev_ts = entry.ts %}
+      <div class="tl-item">
+        <div class="tl-dot {% if entry.node in ('circuit_breaker', 'n2b_clarification_hitl') %}muted{% endif %}"></div>
+        <div class="tl-content">
+          <div class="tl-node">
+            {{ entry.node }}
+            {% if delta > 0 %}
+              <span style="font-size:10px;color:var(--muted);font-weight:400"> +{{ '%.2f'|format(delta) }}s</span>
+            {% endif %}
+          </div>
+          <div class="tl-meta">
+            {% for k, v in entry.items() %}
+              {% if k not in ('node', 'ts') and v is not none and v != '' and v != [] %}
+                <span style="margin-right:10px"><b>{{ k }}</b>: {{ v }}</span>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Make enumerate available to Jinja2 as a simple workaround
+// (routing_plan rendered using loop.index above instead)
+</script>
+{% endblock %}

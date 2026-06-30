@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+{% set active = "dashboard" %}
+{% block title %}Dashboard — Idarati Admin{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+
+{# ── Period filter ──────────────────────────────────────────── #}
+<div class="mb-5 flex items-center gap-2">
+  {% for p, label in [('7d','7 jours'),('30d','30 jours'),('90d','90 jours')] %}
+  <a href="?period={{ p }}"
+     class="rounded-lg px-4 py-2 text-sm font-medium transition-colors
+            {% if period == p %}bg-brand-500 text-white shadow-sm shadow-brand-500/20
+            {% else %}bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700
+                       text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800{% endif %}">
+    {{ label }}
+  </a>
+  {% endfor %}
+</div>
+
+{# ── Metric cards ───────────────────────────────────────────── #}
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
+
+  <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 md:p-6">
+    <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/10">
+      <svg class="fill-blue-500" width="22" height="22" viewBox="0 0 24 24">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M3 5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm2 0v2.586l7 7 7-7V5H5zm0 4.828V19h14V9.828l-6.293 6.293a1 1 0 01-1.414 0L5 9.828z"/>
+      </svg>
+    </div>
+    <div class="mt-5 flex items-end justify-between">
+      <div>
+        <span class="text-sm text-gray-500 dark:text-gray-400">Total Réclamations</span>
+        <h4 class="mt-2 text-3xl font-bold text-gray-800 dark:text-white">{{ total }}</h4>
+      </div>
+      <span class="flex items-center gap-1 rounded-full bg-brand-50 dark:bg-brand-900/30 px-2.5 py-1 text-xs font-medium text-brand-500">LangGraph</span>
+    </div>
+  </div>
+
+  <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 md:p-6">
+    <div class="flex h-12 w-12 items-center justify-center rounded-xl
+                {% if avg_quality >= 85 %}bg-green-50 dark:bg-green-500/10{% elif avg_quality >= 50 %}bg-amber-50 dark:bg-amber-500/10{% else %}bg-red-50 dark:bg-red-500/10{% endif %}">
+      <svg width="22" height="22" viewBox="0 0 24 24"
+           class="{% if avg_quality >= 85 %}fill-green-500{% elif avg_quality >= 50 %}fill-amber-500{% else %}fill-red-500{% endif %}">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2a10 10 0 110 20A10 10 0 0112 2zm3.707 7.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-2-2a1 1 0 111.414-1.414L11 12.586l3.293-3.293a1 1 0 011.414 0z"/>
+      </svg>
+    </div>
+    <div class="mt-5 flex items-end justify-between">
+      <div>
+        <span class="text-sm text-gray-500 dark:text-gray-400">Score Qualité Moyen</span>
+        <h4 class="mt-2 text-3xl font-bold text-gray-800 dark:text-white">{{ avg_quality }}%</h4>
+      </div>
+      <span class="rounded-full px-2.5 py-1 text-xs font-medium
+                   {% if avg_quality >= 85 %}bg-success-50 dark:bg-success-500/10 text-success-600 dark:text-success-400
+                   {% elif avg_quality >= 50 %}bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400
+                   {% else %}bg-error-50 dark:bg-error-500/10 text-error-600 dark:text-error-400{% endif %}">
+        {% if avg_quality >= 85 %}Excellent{% elif avg_quality >= 50 %}Moyen{% else %}Faible{% endif %}
+      </span>
+    </div>
+  </div>
+
+  <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 md:p-6">
+    <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-50 dark:bg-purple-500/10">
+      <svg class="fill-purple-500" width="22" height="22" viewBox="0 0 24 24">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2a10 10 0 110 20A10 10 0 0112 2zm0 2a8 8 0 100 16A8 8 0 0012 4zm0 2a1 1 0 011 1v4.586l2.707 2.707a1 1 0 01-1.414 1.414l-3-3A1 1 0 0111 14V9a1 1 0 011-1z"/>
+      </svg>
+    </div>
+    <div class="mt-5 flex items-end justify-between">
+      <div>
+        <span class="text-sm text-gray-500 dark:text-gray-400">Temps Traitement</span>
+        <h4 class="mt-2 text-3xl font-bold text-gray-800 dark:text-white">
+          {{ avg_time_ms | int }}<span class="text-lg font-normal text-gray-400 ml-1">ms</span>
+        </h4>
+      </div>
+      <span class="rounded-full bg-purple-50 dark:bg-purple-500/10 px-2.5 py-1 text-xs font-medium text-purple-600 dark:text-purple-400">Pipeline</span>
+    </div>
+  </div>
+
+  <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 md:p-6">
+    <div class="flex h-12 w-12 items-center justify-center rounded-xl
+                {% if success_pct >= 80 %}bg-green-50 dark:bg-green-500/10{% elif success_pct >= 50 %}bg-amber-50 dark:bg-amber-500/10{% else %}bg-red-50 dark:bg-red-500/10{% endif %}">
+      <svg width="22" height="22" viewBox="0 0 24 24"
+           class="{% if success_pct >= 80 %}fill-green-500{% elif success_pct >= 50 %}fill-amber-500{% else %}fill-red-500{% endif %}">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2a10 10 0 110 20A10 10 0 0112 2zm3.707 7.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-2-2a1 1 0 111.414-1.414L11 12.586l3.293-3.293a1 1 0 011.414 0z"/>
+      </svg>
+    </div>
+    <div class="mt-5 flex items-end justify-between">
+      <div>
+        <span class="text-sm text-gray-500 dark:text-gray-400">Taux de Succès <span class="text-xs">(≥85%)</span></span>
+        <h4 class="mt-2 text-3xl font-bold text-gray-800 dark:text-white">{{ success_pct }}%</h4>
+      </div>
+      <span class="rounded-full px-2.5 py-1 text-xs font-medium
+                   {% if success_pct >= 80 %}bg-success-50 dark:bg-success-500/10 text-success-600 dark:text-success-400
+                   {% elif success_pct >= 50 %}bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400
+                   {% else %}bg-error-50 dark:bg-error-500/10 text-error-600 dark:text-error-400{% endif %}">
+        {{ success_pct }}%
+      </span>
+    </div>
+  </div>
+
+</div>
+
+{# ── Plotly charts ──────────────────────────────────────────── #}
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
+
+  <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-sm font-semibold text-gray-800 dark:text-white">Répartition par Intent</h3>
+      <span class="text-xs text-gray-400">Cliquer pour filtrer</span>
+    </div>
+    <div id="intentChart" style="height:220px"></div>
+  </div>
+
+  <div class="xl:col-span-2 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+    <h3 class="text-sm font-semibold text-gray-800 dark:text-white mb-3">Activité quotidienne</h3>
+    <div id="dailyChart" style="height:220px"></div>
+  </div>
+
+</div>
+
+<div class="mb-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+  <h3 class="text-sm font-semibold text-gray-800 dark:text-white mb-3">Distribution par Priorité</h3>
+  <div id="priorityChart" style="height:140px"></div>
+</div>
+
+{# ── Recent table ───────────────────────────────────────────── #}
+<div class="table-card">
+  <div class="table-header">
+    <h3>Réclamations récentes</h3>
+    <a href="{{ url_for('reclamations') }}"
+       class="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 dark:border-brand-800 bg-brand-50 dark:bg-brand-900/20
+              px-3 py-1.5 text-xs font-medium text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-900/40">
+      Voir tout →
+    </a>
+  </div>
+  {% if recent %}
+  <table>
+    <thead>
+      <tr>
+        <th>Session</th><th>Date</th><th>Demande</th><th>Intent</th><th>Priorité</th><th>Qualité</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in recent %}
+    <tr>
+      <td class="font-mono text-xs text-gray-400">{{ r.session_id[:10] }}…</td>
+      <td class="text-xs text-gray-400 whitespace-nowrap">{{ r.created_at[:16] }}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+          title="{{ r.demande_brute }}">{{ (r.demande_brute or '')[:60] }}{% if (r.demande_brute or '')|length > 60 %}…{% endif %}</td>
+      <td><span class="badge badge-{{ r.intent }}">{{ r.intent }}</span></td>
+      <td><span class="badge badge-{{ r.priorite }}">{{ r.priorite }}</span></td>
+      <td>
+        {% set q = r.quality_score or 0 %}
+        <span class="score-pill {% if q >= 0.85 %}score-high{% elif q >= 0.5 %}score-medium{% else %}score-low{% endif %}">
+          {{ (q*100)|round|int }}%
+        </span>
+      </td>
+      <td>
+        <a href="{{ url_for('detail', session_id=r.session_id) }}"
+           class="inline-flex items-center gap-1 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600">
+          Détail
+        </a>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="py-16 text-center text-gray-400 dark:text-gray-600">
+    <p class="text-sm">Aucune réclamation — lancez <code class="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-xs">python main.py</code></p>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const INTENT_COLORS = {reclamation:'#ef4444',procedure:'#3b82f6',info:'#10b981',renvoi:'#f59e0b',inconnu:'#9ca3af'};
+const PRIO_COLORS   = {urgente:'#ef4444',haute:'#f59e0b',normale:'#3b82f6',basse:'#10b981'};
+const pcfg = { responsive: true, displayModeBar: false };
+
+function isDark() { return document.documentElement.classList.contains('dark'); }
+
+// Returns complete Plotly layout — merges base + overrides with proper axis deep-merge
+function lay(overrides={}) {
+  const d = isDark(), gc = d?'#1f2937':'#f3f4f6', tc = d?'#9ca3af':'#6b7280';
+  const base = {
+    paper_bgcolor: d?'#111827':'#fff', plot_bgcolor: d?'#111827':'#fff',
+    font: { family:'Outfit,Inter,sans-serif', color:tc, size:11 },
+    margin: { t:10, b:36, l:48, r:10 },
+    xaxis: { gridcolor:gc, zerolinecolor:gc, color:tc },
+    yaxis: { gridcolor:gc, zerolinecolor:gc, color:tc },
+  };
+  if (overrides.xaxis) overrides.xaxis = { ...base.xaxis, ...overrides.xaxis };
+  if (overrides.yaxis) overrides.yaxis = { ...base.yaxis, ...overrides.yaxis };
+  return { ...base, ...overrides };
+}
+
+// ── Intent donut — with drill-down click ─────────────────────
+const intentData = {{ by_intent | tojson }};
+if (intentData.length) {
+  Plotly.newPlot('intentChart', [{
+    type:'pie', hole:0.62,
+    labels: intentData.map(d=>d.intent),
+    values: intentData.map(d=>d.cnt),
+    marker: { colors: intentData.map(d=>INTENT_COLORS[d.intent]||'#9ca3af'), line:{color:'#fff',width:2} },
+    textinfo:'percent',
+    hovertemplate:'<b>%{label}</b><br>%{value} réclamations<extra></extra>',
+  }], { ...lay({ margin:{t:0,b:0,l:0,r:120} }), showlegend:true,
+        legend:{ orientation:'v', x:1.02, y:0.5, font:{size:10} } }, pcfg);
+
+  document.getElementById('intentChart').on('plotly_click', data => {
+    if (data.points && data.points[0])
+      window.location.href = `/reclamations?intent=${encodeURIComponent(data.points[0].label)}`;
+  });
+} else {
+  document.getElementById('intentChart').innerHTML =
+    '<div style="height:220px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:12px">Aucune donnée</div>';
+}
+
+// ── Daily activity line ───────────────────────────────────────
+const dailyData = {{ daily | tojson }};
+if (dailyData.length) {
+  Plotly.newPlot('dailyChart', [
+    { type:'scatter', mode:'lines+markers', name:'Réclamations',
+      x:dailyData.map(d=>d.day), y:dailyData.map(d=>d.cnt),
+      line:{color:'#465fff',width:2.5}, marker:{size:5,color:'#465fff'},
+      fill:'tozeroy', fillcolor:'rgba(70,95,255,0.08)', yaxis:'y' },
+    { type:'scatter', mode:'lines', name:'Qualité (%)',
+      x:dailyData.map(d=>d.day), y:dailyData.map(d=>d.avg_q),
+      line:{color:'#10b981',width:2,dash:'dot'}, yaxis:'y2' }
+  ], lay({
+    margin:  { t:10, b:50, l:48, r:55 },
+    yaxis:   { title:{text:'Volume',font:{size:10}}, rangemode:'tozero' },
+    yaxis2:  { title:{text:'Qualité (%)',font:{size:10}}, overlaying:'y', side:'right', range:[0,100], showgrid:false },
+    legend:  { orientation:'h', y:-0.2, font:{size:10} },
+    hovermode:'x unified',
+  }), pcfg);
+} else {
+  document.getElementById('dailyChart').innerHTML =
+    '<div style="height:220px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:12px">Aucune donnée pour cette période</div>';
+}
+
+// ── Priority bar ─────────────────────────────────────────────
+const prioData = {{ by_priorite | tojson }};
+if (prioData.length) {
+  Plotly.newPlot('priorityChart', [{
+    type:'bar', orientation:'h',
+    x: prioData.map(d=>d.cnt), y: prioData.map(d=>d.priorite),
+    marker: { color: prioData.map(d=>PRIO_COLORS[d.priorite]||'#9ca3af'), opacity:0.85 },
+    hovertemplate:'<b>%{y}</b>: %{x}<extra></extra>',
+  }], lay({ margin:{t:10,b:30,l:70,r:20}, showlegend:false }), pcfg);
+} else {
+  document.getElementById('priorityChart').innerHTML =
+    '<div style="height:140px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:12px">Aucune donnée</div>';
+}
+
+// Re-theme all charts when dark mode toggles
+new MutationObserver(() => {
+  const d = isDark();
+  const update = { paper_bgcolor: d?'#111827':'#fff', plot_bgcolor: d?'#111827':'#fff',
+                   'font.color': d?'#9ca3af':'#6b7280' };
+  ['intentChart','dailyChart','priorityChart'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el._fullLayout) Plotly.relayout(id, update);
+  });
+}).observe(document.documentElement, { attributeFilter:['class'] });
+</script>
+{% endblock %}

@@ -1,0 +1,12 @@
+{
+  "dockerfile_lines": [],
+  "graphs": {
+    "idarati_v2": "./graphs/main_graph.py:graph"
+  },
+  "auth": {
+    "path": "./auth.py:auth"
+  },
+  "env": ".env",
+  "python_version": "3.11",
+  "dependencies": ["."]
+}
